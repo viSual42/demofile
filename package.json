@@ -10,7 +10,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/saul/demofile.git"
+    "url": "https://github.com/visual42/demofile.git"
   },
   "scripts": {
     "lint": "eslint .",
@@ -26,6 +26,7 @@
     "buffer": "^5.0.0",
     "bytebuffer": "^5.0.0",
     "eslint": "^3.9.1",
+    "eventemitter3": "^3.0.1",
     "lodash": "^3.10.1",
     "long": "^3.0.3",
     "protobufjs": "^4.1.3",

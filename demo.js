@@ -1,19 +1,19 @@
 'use strict';
 
-var Parser = require('binary-parser').Parser;
-var EventEmitter = require('events');
-var timers = require('timers');
+const Parser = require('binary-parser').Parser;
+const EventEmitter = require('eventemitter3');
+const timers = require('timers');
 
-var ByteBuffer = require('./ext/bytebuffer');
-var bitBuffer = require('./ext/bitbuffer');
+const ByteBuffer = require('./ext/bytebuffer');
+const bitBuffer = require('./ext/bitbuffer');
 
-var net = require('./net');
-var consts = require('./consts');
-var StringTables = require('./stringtables');
-var UserMessages = require('./usermessages');
-var GameEvents = require('./gameevents');
-var Entities = require('./entities');
-var ConVars = require('./convars');
+const net = require('./net');
+const consts = require('./consts');
+const StringTables = require('./stringtables');
+const UserMessages = require('./usermessages');
+const GameEvents = require('./gameevents');
+const Entities = require('./entities');
+const ConVars = require('./convars');
 
 const FDEMO_NORMAL = 0;
 const FDEMO_USE_ORIGIN2 = (1 << 0);
@@ -38,7 +38,7 @@ const TEAM_CTS = 3;
  * @property {int} playbackFrames - Total playback frames
  * @property {int} signonLength - Length of signon (bytes)
  */
-var DemoHeader = new Parser()
+const DemoHeader = new Parser()
   .endianess('little')
   .string('magic', { length: 8, stripNull: true })
   .int32('protocol')
@@ -52,7 +52,7 @@ var DemoHeader = new Parser()
   .int32('playbackFrames')
   .int32('signonLength');
 
-var DemoCommands = {
+const DemoCommands = {
   signon: 1, // startup message
   packet: 2, // normal network packet
   syncTick: 3, // sync client clock to demo tick
@@ -64,31 +64,31 @@ var DemoCommands = {
   stringTables: 9
 };
 
-var QAngle = new Parser()
+const QAngle = new Parser()
   .endianess('little')
   .float('pitch')
   .float('yaw')
   .float('roll');
 
-var Vector = new Parser()
+const Vector = new Parser()
   .endianess('little')
   .float('x')
   .float('y')
   .float('z');
 
-var OriginViewAngles = new Parser()
+const OriginViewAngles = new Parser()
   .endianess('little')
   .nest('viewOrigin', { type: Vector })
   .nest('viewAngles', { type: QAngle })
   .nest('localViewAngles', { type: QAngle });
 
-var SplitCmdInfo = new Parser()
+const SplitCmdInfo = new Parser()
   .endianess('little')
   .int32('flags')
   .nest('original', { type: OriginViewAngles })
   .nest('resampled', { type: OriginViewAngles });
 
-var CmdInfo = new Parser()
+const CmdInfo = new Parser()
   .endianess('little')
   .array('u', {
     type: SplitCmdInfo,
@@ -200,20 +200,20 @@ class DemoFile extends EventEmitter {
     this._bytebuf.readInt32();
     this._bytebuf.readInt32();
 
-    var chunk = this._bytebuf.readIBytes();
+    const chunk = this._bytebuf.readIBytes();
 
     while (chunk.remaining()) {
-      var cmd = chunk.readVarint32();
-      var size = chunk.readVarint32();
+      const cmd = chunk.readVarint32();
+      const size = chunk.readVarint32();
 
-      var messageBuffer = chunk.readBytes(size);
+      const messageBuffer = chunk.readBytes(size);
 
-      var message = net.findByType(cmd);
+      const message = net.findByType(cmd);
       if (message === undefined) {
         continue; // unknown net message
       }
 
-      var msgInst = message.class.decode(messageBuffer);
+      const msgInst = message.class.decode(messageBuffer);
 
       this.emit(message.name, msgInst);
     }
@@ -224,7 +224,7 @@ class DemoFile extends EventEmitter {
   }
 
   _handleDataTables() {
-    var chunk = this._bytebuf.readIBytes();
+    const chunk = this._bytebuf.readIBytes();
     this.entities._handleDataTables(chunk);
   }
 
@@ -258,7 +258,7 @@ class DemoFile extends EventEmitter {
 
   /**
    * Fired per command. Parameter is a value in range [0,1] that indicates
-   * the percentage of the demo file has been parsed so far. 
+   * the percentage of the demo file has been parsed so far.
    * @event DemoFile#progress
    * @type {number}
    */
@@ -301,8 +301,8 @@ class DemoFile extends EventEmitter {
     try {
       this.emit('progress', this._bytebuf.offset / this._bytebuf.limit);
 
-      var command = this._bytebuf.readUInt8();
-      var tick = this._bytebuf.readInt32();
+      const command = this._bytebuf.readUInt8();
+      const tick = this._bytebuf.readInt32();
       this.playerSlot = this._bytebuf.readUInt8();
 
       if (tick !== this.currentTick) {
