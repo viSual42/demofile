@@ -1,6 +1,6 @@
-'use strict';
+"use strict";
 
-var EventEmitter = require('events');
+var EventEmitter = require("eventemitter3");
 
 /**
  * Manages console variables.
@@ -29,7 +29,7 @@ class ConVars extends EventEmitter {
    */
 
   listen(demo) {
-    demo.on('net_SetConVar', msg => {
+    demo.on("net_SetConVar", msg => {
       for (let cvar of msg.convars.cvars) {
         if (cvar.name == null) {
           continue;
@@ -40,9 +40,9 @@ class ConVars extends EventEmitter {
         let oldValue = this.vars[cvar.name];
         this.vars[cvar.name] = cvar.value;
 
-        this.emit(cvar.name, {value, oldValue});
+        this.emit(cvar.name, { value, oldValue });
 
-        this.emit('change', {
+        this.emit("change", {
           name: cvar.name,
           value,
           oldValue

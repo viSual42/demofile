@@ -1,12 +1,12 @@
-'use strict';
+"use strict";
 
-var assert = require('assert');
-var EventEmitter = require('events');
-var _ = require('lodash');
-var Parser = require('binary-parser').Parser;
-var Long = require('long');
-var consts = require('./consts');
-var bitBuffer = require('./ext/bitbuffer');
+var assert = require("assert");
+var EventEmitter = require("eventemitter3");
+var _ = require("lodash");
+var Parser = require("binary-parser").Parser;
+var Long = require("long");
+var consts = require("./consts");
+var bitBuffer = require("./ext/bitbuffer");
 
 /**
  * Player info structure.
@@ -21,23 +21,26 @@ var bitBuffer = require('./ext/bitbuffer');
  * @property {int[]} customFiles - custom files CRC for this player
  */
 var PlayerInfo = new Parser()
-  .endianess('big')
-  .uint32('unknown_lo')
-  .uint32('unknown_hi')
-  .uint32('xuid_lo')
-  .uint32('xuid_hi')
-  .string('name', {length: consts.MAX_PLAYER_NAME_LENGTH, stripNull: true})
-  .int32('userId')
-  .string('guid', {length: consts.SIGNED_GUID_LEN + 1, stripNull: true})
+  .endianess("big")
+  .uint32("unknown_lo")
+  .uint32("unknown_hi")
+  .uint32("xuid_lo")
+  .uint32("xuid_hi")
+  .string("name", { length: consts.MAX_PLAYER_NAME_LENGTH, stripNull: true })
+  .int32("userId")
+  .string("guid", { length: consts.SIGNED_GUID_LEN + 1, stripNull: true })
   .skip(3)
-  .uint32('friendsId')
-  .string('friendsName', {length: consts.MAX_PLAYER_NAME_LENGTH, stripNull: true})
-  .uint8('fakePlayer', {formatter: x => x !== 0})
+  .uint32("friendsId")
+  .string("friendsName", {
+    length: consts.MAX_PLAYER_NAME_LENGTH,
+    stripNull: true
+  })
+  .uint8("fakePlayer", { formatter: x => x !== 0 })
   .skip(3)
-  .uint8('isHltv', {formatter: x => x !== 0})
+  .uint8("isHltv", { formatter: x => x !== 0 })
   .skip(3)
-  .array('customFiles', {
-    type: 'uint32be',
+  .array("customFiles", {
+    type: "uint32be",
     length: consts.MAX_CUSTOM_FILES
   });
 
@@ -82,8 +85,14 @@ class StringTables extends EventEmitter {
   }
 
   listen(messageEvents) {
-    messageEvents.on('svc_UpdateStringTable', this._handleUpdateStringTable.bind(this));
-    messageEvents.on('svc_CreateStringTable', this._handleCreateStringTable.bind(this));
+    messageEvents.on(
+      "svc_UpdateStringTable",
+      this._handleUpdateStringTable.bind(this)
+    );
+    messageEvents.on(
+      "svc_CreateStringTable",
+      this._handleCreateStringTable.bind(this)
+    );
   }
 
   findTableByName(name) {
@@ -116,12 +125,15 @@ class StringTables extends EventEmitter {
         let userDataSize = bitbuf.readUInt16();
         let userDataBuf = new Buffer(bitbuf.readBytes(userDataSize));
 
-        userData = userDataCallback === undefined ? userDataBuf : userDataCallback(userDataBuf);
+        userData =
+          userDataCallback === undefined
+            ? userDataBuf
+            : userDataCallback(userDataBuf);
       }
 
-      table.entries[entryIndex] = {entry, userData};
+      table.entries[entryIndex] = { entry, userData };
 
-      this.emit('update', {
+      this.emit("update", {
         table,
         entryIndex,
         entry,
@@ -141,7 +153,10 @@ class StringTables extends EventEmitter {
           let userDataSize = bitbuf.readUInt16();
           let userDataBuf = new Buffer(bitbuf.readBytes(userDataSize));
 
-          userData = userDataCallback === undefined ? userDataBuf : userDataCallback(userDataBuf);
+          userData =
+            userDataCallback === undefined
+              ? userDataBuf
+              : userDataCallback(userDataBuf);
         }
 
         // TODO: do something with client-side entries
@@ -149,7 +164,7 @@ class StringTables extends EventEmitter {
     }
 
     // table is ready
-    this.emit('postcreate', table);
+    this.emit("postcreate", table);
   }
 
   /**
@@ -170,76 +185,83 @@ class StringTables extends EventEmitter {
 
     var userDataCallback = this.userDataCallbacks[table.name];
 
-    assert(!bitbuf.readOneBit(), 'dictionary encoding unsupported');
+    assert(!bitbuf.readOneBit(), "dictionary encoding unsupported");
 
-    _.reduce(_.range(entries), (lastEntry) => {
-      var entryIndex = lastEntry + 1;
+    _.reduce(
+      _.range(entries),
+      lastEntry => {
+        var entryIndex = lastEntry + 1;
 
-      if (!bitbuf.readOneBit()) {
-        entryIndex = bitbuf.readUBits(entryBits);
-      }
+        if (!bitbuf.readOneBit()) {
+          entryIndex = bitbuf.readUBits(entryBits);
+        }
 
-      assert(entryIndex >= 0 && entryIndex < maxEntries, 'bogus string index');
+        assert(
+          entryIndex >= 0 && entryIndex < maxEntries,
+          "bogus string index"
+        );
 
-      var entry = null;
+        var entry = null;
 
-      // has the entry changed?
-      if (bitbuf.readOneBit()) {
-        // substring check
+        // has the entry changed?
         if (bitbuf.readOneBit()) {
-          var index = bitbuf.readUBits(5);
-          var bytesToCopy = bitbuf.readUBits(consts.SUBSTRING_BITS);
+          // substring check
+          if (bitbuf.readOneBit()) {
+            var index = bitbuf.readUBits(5);
+            var bytesToCopy = bitbuf.readUBits(consts.SUBSTRING_BITS);
 
-          var subStr = history[index].slice(0, bytesToCopy);
-          var suffix = bitbuf.readCString();
+            var subStr = history[index].slice(0, bytesToCopy);
+            var suffix = bitbuf.readCString();
 
-          entry = subStr + suffix;
-        } else {
-          entry = bitbuf.readCString();
+            entry = subStr + suffix;
+          } else {
+            entry = bitbuf.readCString();
+          }
+
+          table.entries[entryIndex].entry = entry;
         }
 
-        table.entries[entryIndex].entry = entry;
-      }
+        // read in the user data
+        var userDataArray = null;
+        var userData = null;
 
-      // read in the user data
-      var userDataArray = null;
-      var userData = null;
+        if (bitbuf.readOneBit()) {
+          // don't read the length, it's fixed length and the length was networked down already
+          if (table.userDataFixedSize) {
+            userDataArray = [bitbuf.readUBits(table.userDataSizeBits)];
+          } else {
+            var bytes = bitbuf.readUBits(consts.MAX_USERDATA_BITS);
+            userDataArray = bitbuf.readBytes(bytes);
+          }
 
-      if (bitbuf.readOneBit()) {
-        // don't read the length, it's fixed length and the length was networked down already
-        if (table.userDataFixedSize) {
-          userDataArray = [bitbuf.readUBits(table.userDataSizeBits)];
-        } else {
-          var bytes = bitbuf.readUBits(consts.MAX_USERDATA_BITS);
-          userDataArray = bitbuf.readBytes(bytes);
+          // create a buffer from the array
+          userData = new Buffer(userDataArray);
+
+          if (userDataCallback !== undefined) {
+            userData = userDataCallback(userData);
+          }
+
+          table.entries[entryIndex].userData = userData;
         }
 
-        // create a buffer from the array
-        userData = new Buffer(userDataArray);
-
-        if (userDataCallback !== undefined) {
-          userData = userDataCallback(userData);
+        // add to history
+        if (history.length > 31) {
+          history.shift();
         }
 
-        table.entries[entryIndex].userData = userData;
-      }
+        history.push(entry);
 
-      // add to history
-      if (history.length > 31) {
-        history.shift();
-      }
+        this.emit("update", {
+          table,
+          entryIndex,
+          entry,
+          userData
+        });
 
-      history.push(entry);
-
-      this.emit('update', {
-        table,
-        entryIndex,
-        entry,
-        userData
-      });
-
-      return entryIndex;
-    }, -1);
+        return entryIndex;
+      },
+      -1
+    );
   }
 
   /**
@@ -258,22 +280,28 @@ class StringTables extends EventEmitter {
     var bitbuf = new bitBuffer.BitStream(msg.stringData.toSlicedBuffer());
 
     // table shouldn't already exist
-    assert(this.findTableByName(msg.name) === undefined, 'table already exists');
+    assert(
+      this.findTableByName(msg.name) === undefined,
+      "table already exists"
+    );
 
-    assert(msg.userDataSize === Math.ceil(msg.userDataSizeBits / 8), 'invalid user data byte size');
-    assert(msg.userDataSizeBits <= 32, 'userdata value too large');
+    assert(
+      msg.userDataSize === Math.ceil(msg.userDataSizeBits / 8),
+      "invalid user data byte size"
+    );
+    assert(msg.userDataSizeBits <= 32, "userdata value too large");
 
     // create an empty table
     var table = {
       name: msg.name,
-      entries: _.map(_.range(msg.maxEntries), function () {
-        return {entry: null, userData: null};
+      entries: _.map(_.range(msg.maxEntries), function() {
+        return { entry: null, userData: null };
       }),
       userDataSizeBits: msg.userDataSizeBits,
       userDataFixedSize: msg.userDataFixedSize
     };
 
-    this.emit('create', table);
+    this.emit("create", table);
 
     this._parseStringTableUpdate(bitbuf, table, msg.numEntries, msg.maxEntries);
 
@@ -284,9 +312,14 @@ class StringTables extends EventEmitter {
     var bitbuf = new bitBuffer.BitStream(msg.stringData.toSlicedBuffer());
 
     var table = this.tables[msg.tableId];
-    assert(table !== undefined, 'bad table index');
+    assert(table !== undefined, "bad table index");
 
-    this._parseStringTableUpdate(bitbuf, table, msg.numChangedEntries, table.entries.length);
+    this._parseStringTableUpdate(
+      bitbuf,
+      table,
+      msg.numChangedEntries,
+      table.entries.length
+    );
   }
 }
 

@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
-var _ = require('lodash');
-var assert = require('assert');
-var EventEmitter = require('events');
+var _ = require("lodash");
+var assert = require("assert");
+var EventEmitter = require("eventemitter3");
 
 class GameEvent {
   constructor(descriptor) {
@@ -17,7 +17,7 @@ class GameEvent {
     return _.zipObject(
       this.keyNames,
       _.map(eventMsg.keys, key => {
-        return _.find(key, (value, name) => value !== null && name !== 'type');
+        return _.find(key, (value, name) => value !== null && name !== "type");
       })
     );
   }
@@ -51,9 +51,9 @@ class GameEvents extends EventEmitter {
    */
 
   listen(demo) {
-    demo.on('svc_GameEventList', this._handleGameEventList.bind(this));
+    demo.on("svc_GameEventList", this._handleGameEventList.bind(this));
 
-    demo.on('svc_GameEvent', msg => {
+    demo.on("svc_GameEvent", msg => {
       var event = this.gameEventList[msg.eventid];
 
       var eventVars = event.messageToObject(msg);
@@ -65,11 +65,11 @@ class GameEvents extends EventEmitter {
       });
     });
 
-    demo.on('tickend', () => {
+    demo.on("tickend", () => {
       this.tickEvents.forEach(event => {
         this.emit(event.name, event.event);
 
-        this.emit('event', {
+        this.emit("event", {
           name: event.name,
           event: event.event
         });

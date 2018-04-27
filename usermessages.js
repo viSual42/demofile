@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
-var assert = require('assert');
-var EventEmitter = require('events');
-var net = require('./net');
+var assert = require("assert");
+var EventEmitter = require("eventemitter3");
+var net = require("./net");
 
 /**
  * Handles user messages for a demo file.
@@ -13,7 +13,7 @@ class UserMessages extends EventEmitter {
   }
 
   listen(messageEvents) {
-    messageEvents.on('svc_UserMessage', this._handleUserMessage.bind(this));
+    messageEvents.on("svc_UserMessage", this._handleUserMessage.bind(this));
   }
 
   /**
@@ -41,11 +41,11 @@ class UserMessages extends EventEmitter {
     }
 
     var msgInst = um.class.decode(msg.msgData);
-    assert(msgInst, 'unable to decode user message');
+    assert(msgInst, "unable to decode user message");
 
     this.emit(um.name, msgInst);
 
-    this.emit('message', {
+    this.emit("message", {
       name: um.name,
       msg: msgInst
     });
